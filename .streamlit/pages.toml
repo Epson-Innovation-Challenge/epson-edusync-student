@@ -4,11 +4,11 @@ name = "Home"
 icon = "🏠"
 
 [[pages]]
-path = "pages/agent.py"
-name = "Agent"
-icon = "🧑🏻‍💻"
-
-[[pages]]
 path = "pages/question.py"
 name = "문제풀이"
 icon = "📑"
+
+[[pages]]
+path = "pages/board.py"
+name = "대시보드"
+icon = "📊"
