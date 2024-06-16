@@ -32,8 +32,16 @@ def save_answers_to_json(answers):
 
 def display_results_sidebar(answers):
     df = pd.DataFrame(answers)
+    
+    styled_df = df.style.set_table_styles([
+        {'selector': 'th', 'props': [('text-align', 'center')]},
+        {'selector': 'td', 'props': [('text-align', 'center')]}
+    ])
+    
+    html_table = styled_df.to_html()
+    
     st.sidebar.subheader("📌 제출 결과")
-    st.sidebar.table(df)
+    st.sidebar.write(html_table, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     load_page_config()
