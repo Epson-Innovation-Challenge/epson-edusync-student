@@ -12,3 +12,8 @@ icon = "📑"
 path = "pages/board.py"
 name = "대시보드"
 icon = "📊"
+
+[[pages]]
+path = "pages/study.py"
+name = "보충자료"
+icon = "📚"
