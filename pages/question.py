@@ -9,7 +9,6 @@ import pandas as pd
 # Dropbox 액세스 토큰
 DROPBOX_ACCESS_TOKEN = ''
 
-
 # Dropbox 클라이언트 초기화
 dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 
@@ -86,7 +85,7 @@ if __name__ == "__main__":
 
     col1, col2 = st.columns([4, 3], gap="small")
 
-    folder_path = ""
+    folder_path = "/test"
 
     files = list_files(folder_path)
     if files:
