@@ -16,7 +16,7 @@ def set_sidebar_width():
     """
     <style>
         section[data-testid="stSidebar"] {
-            width: 350px !important;
+            width: 200px !important;
         }
     </style>
     """,
@@ -27,7 +27,6 @@ def init_chat():
     st.write("")
     st.write("")
     st.write("")
-    st.subheader("🔍 문제 풀이 및 해설")
 
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "제출 결과는 좌측에 있습니다 :blush:"}]
