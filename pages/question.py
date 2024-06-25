@@ -5,9 +5,10 @@ import dropbox
 import base64
 import json
 import pandas as pd
+import requests
 
 # Dropbox 액세스 토큰
-DROPBOX_ACCESS_TOKEN = ''
+DROPBOX_ACCESS_TOKEN = ""
 
 # Dropbox 클라이언트 초기화
 dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
@@ -61,12 +62,24 @@ def display_results_sidebar(answers):
     st.sidebar.subheader("📌 제출 결과")
     st.sidebar.write(html_table, unsafe_allow_html=True)
 
+def make_api_call(selected_file, answers):
+    data = {"document": selected_file, "submit": answers}
+    response = requests.post(PostMakeStudentInfoScoreCommentary_url, json=data)
+    response.raise_for_status()  # 오류 발생 시 예외 발생
+    return response.json()
+
 
 if __name__ == "__main__":
     load_page_config()
     set_sidebar_width()
     # Streamlit 인터페이스
     st.title("📑 문제 풀이")
+
+    # # API URL
+    PostMakeStudentInfoScoreCommentary_url = "http://localhost:8000/MakeStudentInfoScoreCommentary"
+    PostCreateMemorizationBookAddCommentary_url = "http://localhost:8000/CreateMemorizationBookAddCommentary"
+    PostCreateCorrectAnswerNote_url = "http://localhost:8000/CreateCorrectAnswerNote"
+
 
     if "current_question" not in st.session_state:
         st.session_state.current_question = 1
@@ -77,11 +90,14 @@ if __name__ == "__main__":
     if "final_submit_enabled" not in st.session_state:
         st.session_state.final_submit_enabled = False
 
-    if "uploaded_file" not in st.session_state:
-        st.session_state.uploaded_file = None
-
     if "final_submitted" not in st.session_state:
         st.session_state.final_submitted = False
+
+    if "api_call_made" not in st.session_state:
+        st.session_state.api_call_made = False
+
+    if "results" not in st.session_state:
+        st.session_state.results = None
 
     col1, col2 = st.columns([4, 3], gap="small")
 
@@ -92,6 +108,7 @@ if __name__ == "__main__":
         with col1:
             selected_file = st.selectbox("📌 문제지를 골라주세요", files)
             if selected_file:
+                
                 file_path = f"{folder_path}/{selected_file}"
                 file_bytes = download_file(file_path)
                 if file_bytes:
@@ -102,22 +119,22 @@ if __name__ == "__main__":
             with col2:
                 for _ in range(20):
                     st.write("")
-                form = st.form("문제풀이")
-                form.subheader(f"✏️ 문제 {st.session_state.current_question}")
-                form.write("문제의 답을 선택하고 제출 버튼을 눌러주세요.")
-                answer = form.radio(
-                    "답",
-                    [1, 2, 3, 4, 5],
-                    index=int(st.session_state.answers[st.session_state.current_question - 1].get('answer', "1")) - 1,
-                    horizontal=True,
-                    label_visibility="collapsed"
-                )
-                
-                col_prev, _, col_submit = form.columns([1, 4, 1])
-                with col_submit:
-                    submit_button = st.form_submit_button(label="제출")
-                with col_prev:
-                    prev_button = st.form_submit_button(label="이전")
+                with st.container(border=True):
+                    st.subheader(f"✏️ 문제 {st.session_state.current_question}")
+                    st.write("문제의 답을 선택하고 제출 버튼을 눌러주세요.")
+                    answer = st.radio(
+                        "답",
+                        [1, 2, 3, 4, 5],
+                        index=int(st.session_state.answers[st.session_state.current_question - 1].get('answer', "1")) - 1,
+                        horizontal=True,
+                        label_visibility="collapsed"
+                    )
+                    
+                    col_prev, _, col_submit = st.columns([1, 4, 1])
+                    with col_submit:
+                        submit_button = st.button(label="제출")
+                    with col_prev:
+                        prev_button = st.button(label="이전")
 
                 if submit_button:
                     # 현재 문제 번호와 답 저장
@@ -130,24 +147,51 @@ if __name__ == "__main__":
 
                 if prev_button and st.session_state.current_question > 1:
                     st.session_state.current_question -= 1
+                    st.rerun()
 
                 if st.session_state.final_submit_enabled:
                     final_submit_button = st.button("최종 제출")
                     if final_submit_button:
                         st.session_state.final_submitted = True
                         st.rerun()
-                        # JSON 데이터를 문자열로 변환하여 화면에 출력
-                        # json_download_link = save_answers_to_json(st.session_state.answers)
-                        # st.markdown(json_download_link, unsafe_allow_html=True)
-                        # display_results_sidebar(st.session_state.answers)
-        else:
+
+        if st.session_state.final_submitted:
             with col2:
                 for _ in range(10):
                     st.write("")
-                # json_download_link = save_answers_to_json(st.session_state.answers)
-                # st.markdown(json_download_link, unsafe_allow_html=True)
+                
+                if not st.session_state.api_call_made and not st.session_state.results:
+                    st.session_state.results = make_api_call(selected_file, st.session_state.answers)
+                    st.session_state.api_call_made = True
+
                 display_results_sidebar(st.session_state.answers)
+
                 st.subheader("🔍 문제 풀이 및 해설")
                 st.success('"모든 문제를 다 푸셨습니다."', icon="✅")
-                init_chat()
-                chat_main()
+
+                if st.session_state.results:
+                    for result in st.session_state.results:
+                        if not result['IsCorrect']:
+                            with st.container():
+                                st.write(f"{result['Number']} 번 문제가 오답이며, 정답은 {result['CorrectAnswer']} 번입니다. 해설은 다음과 같습니다.")
+                                for commentary in result['CommentarySummarize']:
+                                    st.write('- ' + commentary)
+                                st.write("---")  
+
+                but = st.button("보충학습 생성")
+                if but:
+                    with st.spinner("보충학습을 생성 중입니다... 잠시만 기다려주세요."):
+                        response = requests.post(PostCreateMemorizationBookAddCommentary_url)
+                        if response.status_code == 200:
+                            st.success("보충학습이 생성되었습니다.")
+                        else:
+                            st.error("보충학습 생성에 실패했습니다.")
+
+                but2 = st.button("유사문제 생성")
+                if but2:
+                    with st.spinner("유사문제를 생성 중입니다... 잠시만 기다려주세요."):
+                        response = requests.post(PostCreateCorrectAnswerNote_url)
+                        if response.status_code == 200:
+                            st.success("유사문제가 생성되었습니다.")
+                        else:
+                            st.error("유사문제 생성에 실패했습니다.")
